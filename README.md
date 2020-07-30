@@ -62,7 +62,7 @@ A disaster scenario of deleting the namespace will be performed to show that the
 Pick which app that a backup was performed with.
 - [Deleting Cassandra](#deleting-cassandra)  
 
-## Deleting Casandra
+## Deleting Cassandra
 First make sure Step 6 was performed and a Backup of Cassandra exists `velero get backups`.
 
 Then following the [Cassandra Example](https://github.com/konveyor/velero-examples/tree/master/cassandra "Cassandra"), run the
