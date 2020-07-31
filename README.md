@@ -182,8 +182,7 @@ noobaa   [https://10.0.185.183:31408]   [https://10.0.185.183:30213]   registry.
 
 # Step 5 - Installing a Complex Application
 
-In this step we will walkthrough the steps of installing a complex application
-that will be used to demonstration the use of velero in a backup and restore scenario.
+In this step we will walkthrough the steps of installing a complex application that will be used to demonstration the use of velero in a backup and restore scenario.
 
 Available Applications
 
@@ -191,7 +190,9 @@ Available Applications
 * [Postgres](#installing-postgres) 
 
 ## Installing Cassandra
+
 Please follow the link below for installing Cassandra.  
+
 Running `ansible-playbook install.yaml` should set everything up.  
 
 [Cassandra Example](https://github.com/konveyor/velero-examples/tree/master/cassandra "Cassandra")
@@ -200,7 +201,7 @@ End results should look like the following in OpenShift:
 
 ![](images/CassandraOpenshift.png "Cassandra Example")
 
-Output should also have the looking when running the command `oc get all -n cassandra-stateful`:
+The output should also have the following when running the command `oc get all -n cassandra-stateful`:
 ```
 pod/cassandra-0   1/1     Running   0          6d1h
 pod/cassandra-1   1/1     Running   0          6d1h
@@ -214,8 +215,8 @@ statefulset.apps/cassandra   3/3     6d1h
 ```
 
 ## Installing Postgres
-Please follow this link for installing Postgres:
-[Postgres Example](https://github.com/devarshshah15/velero-examples/tree/debug/patroni "Postgres")
+
+Please follow this link for installing Postgres: [Postgres example](https://github.com/devarshshah15/velero-examples/tree/debug/patroni "Postgres").
 
 Running all the commands to install patroni will give results like the following:
 
@@ -239,7 +240,9 @@ statefulset.apps/patroni-persistent   3/3     6d4h
 ```
 
 # Step 6 - Performing a backup
+
 Now that we have a complex application on OpenShift, we can demonstrate a backup on the application.  
+
 Click the link based on which application was installed.
 
 - [Cassandra](#cassandra-app)  
@@ -253,16 +256,15 @@ This will do a few things:
 * Application is also quiesced just before backup.
 * Backup will then be created.
 
-The Cassandra backup can be checked by running `velero get backups`  
+The Cassandra backup can be checked by running `velero get backups`.
+
 Output showing Cassandra in the backup should look like the following:
 
 ![](images/CassandraBackupExample.png "Cassandra Backup")
 
 ## Postgres App
 To start the backup, start by creating annotation of prehooks and posthooks. These will serve the purpose of enabling 
-the quiesce behavior for patroni during backup:
-
-[Detailed Directions](https://github.com/devarshshah15/velero-examples/tree/debug/patroni#quiescing-the-database "Postgres")
+the quiesce behavior for Patroni during backup: [Detailed Directions](https://github.com/devarshshah15/velero-examples/tree/debug/patroni#quiescing-the-database "Postgres")
 
 ```
 oc annotate pod -n patroni \
@@ -272,7 +274,8 @@ oc annotate pod -n patroni \
     post.hook.backup.velero.io/container=patroni-persistent
 ```
 
-Then we can run `oc create -f postgres-backup.yaml ` to create the backup itself.
+Then we can run `oc create -f postgres-backup.yaml` to create the backup itself.
+
 Then run `oc get volumesnapshotcontent` and make sure the output looks similar to the one below.
 ```
 $ oc get volumesnapshotcontent
@@ -286,30 +289,39 @@ snapcontent-d1104635-17d9-4c83-82e4-94032b31054e                  true         2
 # Step 7 - Showing Backup Data in Noobaa S3 Bucket
 
 # Step 8 - Simulating a disaster scenario
+
 A disaster scenario of deleting the namespace will be performed to show that the restore functionalty of velero works.
 
 Pick which app that a backup was performed with.
+
 - [Deleting Cassandra](#deleting-cassandra)  
 - [Deleting Postgres](#deleting-postgres)  
 
 ## Deleting Cassandra
+
 First make sure Step 6 was performed and a Backup of Cassandra exists `velero get backups`.
 
 Then following the [Cassandra Example](https://github.com/konveyor/velero-examples/tree/master/cassandra "Cassandra"), run the
 command `ansible-playbook delete.yaml` which will delete Cassandra and perform the disaster scenario.
-Output should look like the following. Results should also show the cassandra namespace being terminated and then deleting from OpenShift:
+
+The output should look like the following. Results should also show the Cassandra namespace being terminated and then deleting from OpenShift:
+
 ![](images/CassandraDelete.png "Cassandra Delete")
 
 ## Deleting Postgres
+
 First make sure Step 6 was performed and a Backup of Cassandra exists `velero get backups`.
 
 Next we can safely create a disaster scenario and safely delete the namespace.
+
 Run `oc delete namespace patroni` to delete the namespace.
 
 Results should look like the following:
+
 ![](images/PatroniDelete.png "Patroni Delete")
 
 # Step 9 - Restore Application and Demonstrate OCP Plugin Specifics
+
 We can now move onto restoring the application after the disaster scenario. 
 
 Pick which app that a backup was performed with.
@@ -317,14 +329,14 @@ Pick which app that a backup was performed with.
 - [Restoring Postgres](#restoring-postgres)  
 
 ## Restoring Cassandra
-Restoring Cassandra by simply running `ansible-playbook restore`.
-This restore should look like:
+
+Restoring Cassandra by simply running `ansible-playbook restore`. This restore should look like:
 
 ![](images/CassandraRestore.png "Cassandra Restore")
 
 ## Restoring Postgres
-Restoring Postgres by running `oc create -f postgres-restore.yaml`.
-The output should show:
+
+Restoring Postgres by running `oc create -f postgres-restore.yaml`. The output should show:
 
 ![](images/PatroniRestore.png "Postgres Restore")
 
