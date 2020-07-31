@@ -108,6 +108,7 @@ A disaster scenario of deleting the namespace will be performed to show that the
 
 Pick which app that a backup was performed with.
 - [Deleting Cassandra](#deleting-cassandra)  
+- [Deleting Postgres](#deleting-postgres)  
 
 ## Deleting Cassandra
 First make sure Step 6 was performed and a Backup of Cassandra exists `velero get backups`.
@@ -116,4 +117,46 @@ Then following the [Cassandra Example](https://github.com/konveyor/velero-exampl
 command `ansible-playbook delete.yaml` which will delete Cassandra and perform the disaster scenario.
 Output should look like the following below. Results should also show the cassandra namespace being terminated and then deleting from openshift.
 ![](Images/CassandraDelete.png "Cassandra Delete")
+
+## Deleting Postgres
+First make sure Step 6 was performed and a Backup of Cassandra exists `velero get backups`.
+
+Next we can safely create a disaster scenario and safely delete the namespace.
+Run `oc delete namespace patroni` to delete the namespace.
+
+Results should look like the following below.
+![](Images/PatroniDelete.png "Patroni Delete")
+
+# Step 9
+## Restore application and demonstrate OCP plugin specifics
+We can now move onto restoring the application after the disaster scenario. 
+
+Pick which app that a backup was performed with.
+- [Restoring Cassandra](#restoring-cassandra)  
+- [Restoring Postgres](#restoring-postgres)  
+
+## Restoring Cassandra
+Restoring Cassandra by simply running `ansible-playbook restore`.
+This restore should look like the following below.
+![](Images/CassandraRestore.png "Cassandra Restore")
+
+## Restoring Postgres
+Restoring Postgres by running `oc create -f postgres-restore.yaml `.
+Output should show the following below.
+![](Images/PatroniRestore.png "Postgres Restore")
+Then check the CSI snapshots were created after restore.
+<pre>
+$ oc get volumesnapshotcontent
+NAME                                                              READYTOUSE   RESTORESIZE   DELETIONPOLICY   DRIVER                       VOLUMESNAPSHOTCLASS       VOLUMESNAPSHOT                                         AGE
+snapcontent-24ef293e-68b1-4f01-8d9b-673d20c6b423                  true         5368709120    Retain           rook-ceph.rbd.csi.ceph.com   csi-rbdplugin-snapclass   velero-patroni-persistent-patroni-persistent-0-6l8rf   46m
+snapcontent-bea37537-a585-4c5d-a02d-ce1067f067a8                  true         5368709120    Retain           rook-ceph.rbd.csi.ceph.com   csi-rbdplugin-snapclass   velero-patroni-persistent-patroni-persistent-2-hk4pk   45m
+snapcontent-c0e5a49b-e5d8-4235-8f90-96f2eedf2d04                  true         5368709120    Retain           rook-ceph.rbd.csi.ceph.com   csi-rbdplugin-snapclass   velero-patroni-persistent-patroni-persistent-1-q7nj6   46m
+snapcontent-d1104635-17d9-4c83-82e4-94032b31054e                  true         2147483648    Retain           rook-ceph.rbd.csi.ceph.com   csi-rbdplugin-snapclass   velero-patroni-8gx2g                                   44m
+velero-velero-patroni-8gx2g-hhgd2                                 true         0             Retain           rook-ceph.rbd.csi.ceph.com   csi-rbdplugin-snapclass   velero-patroni-8gx2g                                   40m
+velero-velero-patroni-persistent-patroni-persistent-0-6l8rcppgv   true         0             Retain           rook-ceph.rbd.csi.ceph.com   csi-rbdplugin-snapclass   velero-patroni-persistent-patroni-persistent-0-6l8rf   17m
+velero-velero-patroni-persistent-patroni-persistent-1-q7njpv44s   true         0             Retain           rook-ceph.rbd.csi.ceph.com   csi-rbdplugin-snapclass   velero-patroni-persistent-patroni-persistent-1-q7nj6   17m
+velero-velero-patroni-persistent-patroni-persistent-2-hk4pv8mgz   true         0             Retain           rook-ceph.rbd.csi.ceph.com   csi-rbdplugin-snapclass   velero-patroni-persistent-patroni-persistent-2-hk4pk   17m
+</pre>
+
+
 
