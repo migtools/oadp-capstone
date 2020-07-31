@@ -44,6 +44,7 @@ oc delete -f deploy/crds/konveyor.openshift.io_veleros_crd.yaml
 oc delete -f deploy/
 oc delete namespace oadp-operator
 oc delete crd $(oc get crds | grep velero.io | awk -F ' ' '{print $1}')
+oc delete -f oadp-operator-source.yaml
 ```
 
 Run the following commands (note: they should be run from the root of the oadp-operator directory):
