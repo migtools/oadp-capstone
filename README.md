@@ -77,13 +77,13 @@ If you go to Installed Operators and select the openshift-operator project, you 
 
 ![OCS Installed](/images/ocs_installed.png)
 
-# Step 4: Create a Velero Custom Resource to install Velero+Restic+Noobaa
+# Step 4: Create a Velero Custom Resource to Install Velero, Restic, and Noobaa
 
-In order to use OLM for OADP deployment, you need to change flag `olm_managed` in the `konveyor.openshift.io_v1alpha1_velero_cr.yaml` to true. The file is present in deploy/crds folder.
+In order to use OLM for OADP deployment, you need to change flag `olm_managed` in the `konveyor.openshift.io_v1alpha1_velero_cr.yaml` to `true`. The file is present in deploy/crds folder.
 
 Moreover, to use Nooba, in the `konveyor.openshift.io_v1alpha1_velero_cr.yaml`, you need to:  
 
-1. Set the flag `noobaa` to true.
+1. Set the flag `noobaa` to `true`.
 2. Set the volume snapshot location region to the correct value. 
 
 For instance the `konveyor.openshift.io_v1alpha1_velero_cr.yaml` file might look something like this:
@@ -177,5 +177,168 @@ Also, `oc get noobaa` should give:
 NAME     MGMT-ENDPOINTS                 S3-ENDPOINTS                   IMAGE                                                                                                            PHASE   AGE
 noobaa   [https://10.0.185.183:31408]   [https://10.0.185.183:30213]   registry.redhat.io/ocs4/mcg-core-rhel8@sha256:689c5a109b81190ddc507b17b7b44ae00029951e7e2c80a6e33358a53945dab6   Ready   161m
 ```
+
+# Step 5 - Installing a Complex Application
+
+In this step we will walkthrough the steps of installing a complex application
+that will be used to demonstration the use of velero in a backup and restore scenario.
+
+Available Applications
+
+* [Cassandra](#installing-cassandra) 
+* [Postgres](#installing-postgres) 
+
+## Installing Cassandra
+Please follow the link below for installing Cassandra.  
+Running `ansible-playbook install.yaml` should set everything up.  
+
+[Cassandra Example](https://github.com/konveyor/velero-examples/tree/master/cassandra "Cassandra")
+
+End results should look like the following in OpenShift:
+
+![](images/CassandraOpenshift.png "Cassandra Example")
+
+Output should also have the looking when running the command `oc get all -n cassandra-stateful`:
+```
+pod/cassandra-0   1/1     Running   0          6d1h
+pod/cassandra-1   1/1     Running   0          6d1h
+pod/cassandra-2   1/1     Running   0          6d1h
+
+NAME                TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)    AGE
+service/cassandra   ClusterIP   None         &lt;none&gt;        9042/TCP   6d1h
+
+NAME                         READY   AGE
+statefulset.apps/cassandra   3/3     6d1h
+```
+
+## Installing Postgres
+Please follow this link for installing Postgres:
+[Postgres Example](https://github.com/devarshshah15/velero-examples/tree/debug/patroni "Postgres")
+
+Running all the commands to install patroni will give results like the following:
+
+![](images/PatroniOpenshift.png "Patroni Example")
+
+Output should also have the looking when running the command `oc get all -n patroni`:
+```
+NAME                       READY   STATUS    RESTARTS   AGE
+pod/patroni-persistent-0   1/1     Running   0          6d4h
+pod/patroni-persistent-1   1/1     Running   0          6d4h
+pod/patroni-persistent-2   1/1     Running   0          6d4h
+pod/pgbench                1/1     Running   0          6d4h
+
+NAME                                 TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)    AGE
+service/patroni-persistent           ClusterIP   172.30.146.208   &lt;none&gt;        5432/TCP   6d4h
+service/patroni-persistent-master    ClusterIP   172.30.44.10     &lt;none&gt;        5432/TCP   6d4h
+service/patroni-persistent-replica   ClusterIP   172.30.111.87    &lt;none&gt;        5432/TCP   6d4h
+
+NAME                                  READY   AGE
+statefulset.apps/patroni-persistent   3/3     6d4h
+```
+
+# Step 6 - Performing a backup
+Now that we have a complex application on OpenShift, we can demonstrate a backup on the application.  
+Click the link based on which application was installed.
+
+- [Cassandra](#cassandra-app)  
+- [Postgres HA](#postgres-app)
+
+## Cassandra App
+For Cassandra, all we need to do to perform the backup is running the command `ansible-playbook backup.yaml`.
+
+This will do a few things:
+* Velero hooks containing commands are executing to stop writes pre-backup and start again post-backup.
+* Application is also quiesced just before backup.
+* Backup will then be created.
+
+The Cassandra backup can be checked by running `velero get backups`  
+Output showing Cassandra in the backup should look like the following:
+
+![](images/CassandraBackupExample.png "Cassandra Backup")
+
+## Postgres App
+To start the backup, start by creating annotation of prehooks and posthooks. These will serve the purpose of enabling 
+the quiesce behavior for patroni during backup:
+
+[Detailed Directions](https://github.com/devarshshah15/velero-examples/tree/debug/patroni#quiescing-the-database "Postgres")
+
+```
+oc annotate pod -n patroni \
+    pre.hook.backup.velero.io/command= '["/bin/bash", "-c","patronictl pause && pg_ctl stop -D pgdata/pgroot/data"]' \
+    pre.hook.backup.velero.io/container=patroni-persistent \
+    post.hook.backup.velero.io/command='["/bin/bash", "-c", "patronictl resume"]'\
+    post.hook.backup.velero.io/container=patroni-persistent
+```
+
+Then we can run `oc create -f postgres-backup.yaml ` to create the backup itself.
+Then run `oc get volumesnapshotcontent` and make sure the output looks similar to the one below.
+```
+$ oc get volumesnapshotcontent
+NAME                                                              READYTOUSE   RESTORESIZE   DELETIONPOLICY   DRIVER                       VOLUMESNAPSHOTCLASS       VOLUMESNAPSHOT                                         AGE
+snapcontent-24ef293e-68b1-4f01-8d9b-673d20c6b423                  true         5368709120    Retain           rook-ceph.rbd.csi.ceph.com   csi-rbdplugin-snapclass   velero-patroni-persistent-patroni-persistent-0-6l8rf   46m
+snapcontent-bea37537-a585-4c5d-a02d-ce1067f067a8                  true         5368709120    Retain           rook-ceph.rbd.csi.ceph.com   csi-rbdplugin-snapclass   velero-patroni-persistent-patroni-persistent-2-hk4pk   45m
+snapcontent-c0e5a49b-e5d8-4235-8f90-96f2eedf2d04                  true         5368709120    Retain           rook-ceph.rbd.csi.ceph.com   csi-rbdplugin-snapclass   velero-patroni-persistent-patroni-persistent-1-q7nj6   46m
+snapcontent-d1104635-17d9-4c83-82e4-94032b31054e                  true         2147483648    Retain           rook-ceph.rbd.csi.ceph.com   csi-rbdplugin-snapclass   velero-patroni-8gx2g                                   44m
+```
+    
+# Step 7 - Showing Backup Data in Noobaa S3 Bucket
+
+# Step 8 - Simulating a disaster scenario
+A disaster scenario of deleting the namespace will be performed to show that the restore functionalty of velero works.
+
+Pick which app that a backup was performed with.
+- [Deleting Cassandra](#deleting-cassandra)  
+- [Deleting Postgres](#deleting-postgres)  
+
+## Deleting Cassandra
+First make sure Step 6 was performed and a Backup of Cassandra exists `velero get backups`.
+
+Then following the [Cassandra Example](https://github.com/konveyor/velero-examples/tree/master/cassandra "Cassandra"), run the
+command `ansible-playbook delete.yaml` which will delete Cassandra and perform the disaster scenario.
+Output should look like the following. Results should also show the cassandra namespace being terminated and then deleting from OpenShift:
+![](images/CassandraDelete.png "Cassandra Delete")
+
+## Deleting Postgres
+First make sure Step 6 was performed and a Backup of Cassandra exists `velero get backups`.
+
+Next we can safely create a disaster scenario and safely delete the namespace.
+Run `oc delete namespace patroni` to delete the namespace.
+
+Results should look like the following:
+![](images/PatroniDelete.png "Patroni Delete")
+
+# Step 9 - Restore Application and Demonstrate OCP Plugin Specifics
+We can now move onto restoring the application after the disaster scenario. 
+
+Pick which app that a backup was performed with.
+- [Restoring Cassandra](#restoring-cassandra)  
+- [Restoring Postgres](#restoring-postgres)  
+
+## Restoring Cassandra
+Restoring Cassandra by simply running `ansible-playbook restore`.
+This restore should look like:
+
+![](images/CassandraRestore.png "Cassandra Restore")
+
+## Restoring Postgres
+Restoring Postgres by running `oc create -f postgres-restore.yaml`.
+The output should show:
+
+![](images/PatroniRestore.png "Postgres Restore")
+
+Then check the CSI snapshots were created after restore.
+```
+$ oc get volumesnapshotcontent
+NAME                                                              READYTOUSE   RESTORESIZE   DELETIONPOLICY   DRIVER                       VOLUMESNAPSHOTCLASS       VOLUMESNAPSHOT                                         AGE
+snapcontent-24ef293e-68b1-4f01-8d9b-673d20c6b423                  true         5368709120    Retain           rook-ceph.rbd.csi.ceph.com   csi-rbdplugin-snapclass   velero-patroni-persistent-patroni-persistent-0-6l8rf   46m
+snapcontent-bea37537-a585-4c5d-a02d-ce1067f067a8                  true         5368709120    Retain           rook-ceph.rbd.csi.ceph.com   csi-rbdplugin-snapclass   velero-patroni-persistent-patroni-persistent-2-hk4pk   45m
+snapcontent-c0e5a49b-e5d8-4235-8f90-96f2eedf2d04                  true         5368709120    Retain           rook-ceph.rbd.csi.ceph.com   csi-rbdplugin-snapclass   velero-patroni-persistent-patroni-persistent-1-q7nj6   46m
+snapcontent-d1104635-17d9-4c83-82e4-94032b31054e                  true         2147483648    Retain           rook-ceph.rbd.csi.ceph.com   csi-rbdplugin-snapclass   velero-patroni-8gx2g                                   44m
+velero-velero-patroni-8gx2g-hhgd2                                 true         0             Retain           rook-ceph.rbd.csi.ceph.com   csi-rbdplugin-snapclass   velero-patroni-8gx2g                                   40m
+velero-velero-patroni-persistent-patroni-persistent-0-6l8rcppgv   true         0             Retain           rook-ceph.rbd.csi.ceph.com   csi-rbdplugin-snapclass   velero-patroni-persistent-patroni-persistent-0-6l8rf   17m
+velero-velero-patroni-persistent-patroni-persistent-1-q7njpv44s   true         0             Retain           rook-ceph.rbd.csi.ceph.com   csi-rbdplugin-snapclass   velero-patroni-persistent-patroni-persistent-1-q7nj6   17m
+velero-velero-patroni-persistent-patroni-persistent-2-hk4pv8mgz   true         0             Retain           rook-ceph.rbd.csi.ceph.com   csi-rbdplugin-snapclass   velero-patroni-persistent-patroni-persistent-2-hk4pk   17m
+```
+
 
 
