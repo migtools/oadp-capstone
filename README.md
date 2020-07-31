@@ -4,8 +4,10 @@
 
 Clone the OADP Operator repository:
 ```
-git clone git@github.com:konveyor/oadp-operator.git
+git clone https://github.com/Amoghrd/oadp-operator.git
 ```
+
+Switch to myBranch.
 
 Build the operator image:
 ```
