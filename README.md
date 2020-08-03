@@ -25,6 +25,8 @@ sed -i 's|quay.io/konveyor/oadp-operator:latest|<REGISTRY_URL>|g' deploy/operato
 ```
 
 Create an `oadp-operator-source.yaml` file like below in oadp-operator directory:
+
+<b>Note:</b> Change the `registryNamespace` and `publisher` fields.
 ```
 apiVersion: operators.coreos.com/v1
 kind: OperatorSource
@@ -39,15 +41,6 @@ spec:
   publisher: "deshah@redhat.com"
 ```
 
-Remove the deployed resources:
-```
-oc delete -f deploy/crds/konveyor.openshift.io_v1alpha1_velero_cr.yaml
-oc delete -f deploy/crds/konveyor.openshift.io_veleros_crd.yaml   
-oc delete -f deploy/
-oc delete namespace oadp-operator
-oc delete crd $(oc get crds | grep velero.io | awk -F ' ' '{print $1}')
-oc delete -f oadp-operator-source.yaml
-```
 
 Run the following commands (note: they should be run from the root of the oadp-operator directory):
 
@@ -57,6 +50,19 @@ oc project oadp-operator
 oc create secret generic <SECRET_NAME> --namespace oadp-operator --from-file cloud=<CREDENTIALS_FILE_PATH>
 oc create -f oadp-operator-source.yaml
 ```
+
+Remove the deployed resources:
+
+- Delete any CRD instances created inside the operator from operatorhub console.
+
+![CRD Unintall](/images/crd_uninstall.png)
+
+
+- Uninstall the OADP operator from the namespace.
+
+![OADP Uninstall](/images/oadp_uninstall.png)
+
+
 
 # Step 2: Install OADP Operator from OperatorHub
 
