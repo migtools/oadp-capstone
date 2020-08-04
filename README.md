@@ -361,6 +361,13 @@ Results should look like the following:
 
 ![](images/PatroniDelete.png "Patroni Delete")
 
+
+Delete image from internal registry and PV data once backup is completed. Restore the backup to see if internal registry image and PV data gets created:
+
+![](images/is_restore.png "IS_PLUGIN Restore")
+
+![](images/PatroniDelete.png "Patroni Delete")
+
 # Step 9 - Restore Application and Demonstrate OCP Plugin Specifics
 
 We can now move onto restoring the application after the disaster scenario. 
