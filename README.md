@@ -199,7 +199,7 @@ Running `ansible-playbook install.yaml` should set everything up.
 
 End results should look like the following in OpenShift:
 
-![](images/CassandraOpenshift.png "Cassandra Example")
+![](Images/CassandraOpen.png)
 
 The output should also have the following when running the command `oc get all -n cassandra-stateful`:
 ```
@@ -249,18 +249,154 @@ Click the link based on which application was installed.
 - [Postgres HA](#postgres-app)
 
 ## Cassandra App
-For Cassandra, all we need to do to perform the backup is running the command `ansible-playbook backup.yaml`.
+First before our backup, lets populate our database in Cassandra with some sample data.  
+Run the commands in the following order. This will access the shell and populate some data. 
+<pre>
+oc exec -it cassandra-0 -- cqlsh
+CREATE KEYSPACE classicmodels WITH REPLICATION = { 'class' : 'SimpleStrategy', 'replication_factor' : 3 };
+use classicmodels;
+CREATE TABLE offices (officeCode text PRIMARY KEY, city text, phone text, addressLine1 text, addressLine2 text, state text, country text, postalCode text, territory text);
+INSERT into offices(officeCode, city, phone, addressLine1, addressLine2, state, country ,postalCode, territory) values
+('1','San Francisco','+1 650 219 4782','100 Market Street','Suite 300','CA','USA','94080','NA');
+</pre>
 
-This will do a few things:
-* Velero hooks containing commands are executing to stop writes pre-backup and start again post-backup.
-* Application is also quiesced just before backup.
-* Backup will then be created.
+Optional: You can use `SELECT * FROM classicmodels.offices;` to check that your sample data is entered correctly.
+
+Last exit the shell to move onto the backup.
+
+Now for the backup, all we need to do to perform the backup is running the command `ansible-playbook backup.yaml`.
+
+Backup will look like the following with the nodetool operations being called in cassandra.
+<pre>
+    Disable Gossip (Stops communication with other nodes)
+    Disable Thrift (Stops communication with one of the two protocols for listening to client)
+    Disable Binary (Stops communication with the other protocol for listening to client)
+    Nodetool flush is called to flush all memory to disk
+    Perform Backup
+    Enable Gossip, Thrift, and Binary (Start listening to connections again)
+</pre>
+
+Velero hooks look like this
+<pre>
+pre.hook.backup.velero.io/command: '["/bin/bash", "-c", "opt/cassandra/bin/nodetool disablegossip && opt/cassandra/bin/nodetool disablethrift && opt/cassandra/bin/nodetool disablebinary && opt/cassandra/bin/nodetool flush"]'
+post.hook.backup.velero.io/command: '["/bin/bash", "-c", "opt/cassandra/bin/nodetool enablegossip && opt/cassandra/bin/nodetool enablethrift && opt/cassandra/bin/nodetool enablebinary"]'
+</pre>
 
 The Cassandra backup can be checked by running `velero get backups`.
 
 Output showing Cassandra in the backup should look like the following:
 
 ![](images/CassandraBackupExample.png "Cassandra Backup")
+
+Output showing description of backup using `velero describe backup`  
+Note: This backup is using restic because vsl was not configured.  
+Used opt-in approach. Annotate Pod with the following.  
+`kubectl -n YOUR_POD_NAMESPACE annotate pod/YOUR_POD_NAME backup.velero.io/backup-volumes=YOUR_VOLUME_NAME_1,YOUR_VOLUME_NAME_2,...`
+<pre>
+Name:         cassandra
+Namespace:    oadp-operator
+Labels:       velero.io/storage-location=default
+Annotations:  velero.io/source-cluster-k8s-gitversion=v1.17.1
+              velero.io/source-cluster-k8s-major-version=1
+              velero.io/source-cluster-k8s-minor-version=17+
+
+Phase:  Completed
+
+Namespaces:
+  Included:  cassandra-stateful
+  Excluded:  &lt;none&gt;
+
+Resources:
+  Included:        *
+  Excluded:        &lt;none&gt;
+  Cluster-scoped:  auto
+
+Label selector:  &lt;none&gt;
+
+Storage Location:  default
+
+Snapshot PVs:  auto
+
+TTL:  720h0m0s
+
+Hooks:  &lt;none&gt;
+
+Backup Format Version:  1
+
+Started:    2020-08-05 15:29:29 -0400 EDT
+Completed:  2020-08-05 15:31:36 -0400 EDT
+
+Expiration:  2020-09-04 15:29:29 -0400 EDT
+
+Resource List:
+  apps/v1/ControllerRevision:
+    - cassandra-stateful/cassandra-7f6dd487c4
+  apps/v1/StatefulSet:
+    - cassandra-stateful/cassandra
+  authorization.openshift.io/v1/RoleBinding:
+    - cassandra-stateful/system:deployers
+    - cassandra-stateful/system:image-builders
+    - cassandra-stateful/system:image-pullers
+  rbac.authorization.k8s.io/v1/RoleBinding:
+    - cassandra-stateful/system:deployers
+    - cassandra-stateful/system:image-builders
+    - cassandra-stateful/system:image-pullers
+  v1/Endpoints:
+    - cassandra-stateful/cassandra
+  v1/Event:
+    - cassandra-stateful/cassandra-0.162864baf6d28fab
+    - cassandra-stateful/cassandra-0.162864bcd951d606
+    - cassandra-stateful/cassandra-0.162864bcf2313a6b
+    - cassandra-stateful/cassandra-0.162864bd16274de5
+    - cassandra-stateful/cassandra-0.162864bd1b3084c6
+    - cassandra-stateful/cassandra-1.1628648122760fc3
+    - cassandra-stateful/cassandra-1.1628648e6bfc1f12
+    - cassandra-stateful/cassandra-1.162864cdc171b9a3
+    - cassandra-stateful/cassandra-1.162864cddc6ccce5
+    - cassandra-stateful/cassandra-1.162864ce0a07b2f1
+    - cassandra-stateful/cassandra-1.162864ce13ffce3a
+    - cassandra-stateful/cassandra-2.162864baf6d22579
+    - cassandra-stateful/cassandra-2.162864bcc8b8da2b
+    - cassandra-stateful/cassandra-2.162864bcf2327934
+    - cassandra-stateful/cassandra-2.162864bd15748bd6
+    - cassandra-stateful/cassandra-2.162864bd1b348408
+  v1/Namespace:
+    - cassandra-stateful
+  v1/PersistentVolume:
+    - pvc-3efd688e-96e8-4bf4-8d2e-38548ac06c91
+    - pvc-91431776-ccf1-42f4-a88c-7d0eb4c8298d
+    - pvc-cf82ea3c-c545-42ec-a7c1-ced47ea557e5
+  v1/PersistentVolumeClaim:
+    - cassandra-stateful/cassandra-data-cassandra-0
+    - cassandra-stateful/cassandra-data-cassandra-1
+    - cassandra-stateful/cassandra-data-cassandra-2
+  v1/Pod:
+    - cassandra-stateful/cassandra-0
+    - cassandra-stateful/cassandra-1
+    - cassandra-stateful/cassandra-2
+  v1/Secret:
+    - cassandra-stateful/builder-dockercfg-qtvlk
+    - cassandra-stateful/builder-token-9nf7b
+    - cassandra-stateful/builder-token-njwp5
+    - cassandra-stateful/default-dockercfg-f5wdd
+    - cassandra-stateful/default-token-dhnvg
+    - cassandra-stateful/default-token-jgsx8
+    - cassandra-stateful/deployer-dockercfg-7gz2z
+    - cassandra-stateful/deployer-token-92snh
+    - cassandra-stateful/deployer-token-zgzw9
+  v1/Service:
+    - cassandra-stateful/cassandra
+  v1/ServiceAccount:
+    - cassandra-stateful/builder
+    - cassandra-stateful/default
+    - cassandra-stateful/deployer
+
+Persistent Volumes: &lt;none included&gt;
+
+Restic Backups:
+  Completed:
+    cassandra-stateful/cassandra-0: cassandra-data
+</pre>
 
 ## Postgres App
 To start the backup, start by creating annotation of prehooks and posthooks. These will serve the purpose of enabling 
@@ -332,7 +468,39 @@ Pick which app that a backup was performed with.
 
 Restoring Cassandra by simply running `ansible-playbook restore`. This restore should look like:
 
+Should look like the following.
 ![](images/CassandraRestore.png "Cassandra Restore")
+
+Now run `velero describe restore cassandra --details` to check the data being restored and the restore as complete.
+<pre>
+Name:         cassandra
+Namespace:    oadp-operator
+Labels:       &lt;none&gt;
+Annotations:  &lt;none&gt;
+
+Phase:  Completed
+
+Backup:  cassandra
+
+Namespaces:
+  Included:  *
+  Excluded:  &lt;none&gt;
+
+Resources:
+  Included:        *
+  Excluded:        nodes, events, events.events.k8s.io, backups.velero.io, restores.velero.io, resticrepositories.velero.io
+  Cluster-scoped:  auto
+
+Namespace mappings:  &lt;none&gt;
+
+Label selector:  &lt;none&gt;
+
+Restore PVs:  true
+
+Restic Restores:
+  Completed:
+    cassandra-stateful/cassandra-0: cassandra-data
+</pre>
 
 ## Restoring Postgres
 
