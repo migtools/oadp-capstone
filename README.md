@@ -179,6 +179,13 @@ Also, `oc get noobaa` should give:
 NAME     MGMT-ENDPOINTS                 S3-ENDPOINTS                   IMAGE                                                                                                            PHASE   AGE
 noobaa   [https://10.0.185.183:31408]   [https://10.0.185.183:30213]   registry.redhat.io/ocs4/mcg-core-rhel8@sha256:689c5a109b81190ddc507b17b7b44ae00029951e7e2c80a6e33358a53945dab6   Ready   161m
 ```
+<b>Note:</b> Please refer the following documentation for more information regarding OADP Operator with NooBaa install, debugging scenarios and cleanup. 
+
+[Install OADP Operator and use NooBaa as a BackupStoraeLocation](docs/noobaa/install_oadp_noobaa.md) 
+
+[NooBaa debugging scenarios](docs/noobaa/debug_noobaa.md)
+
+[Cleanup OADP Operator with NooBaa](docs/noobaa/cleanup_oadp_noobaa.md)
 
 # Step 5 - Installing a Complex Application
 
