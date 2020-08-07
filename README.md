@@ -87,25 +87,15 @@ spec:
   noobaa: true
   default_velero_plugins:
   - aws
-  backup_storage_locations:
-  - name: default
-    provider: aws
-    object_storage:
-      bucket: myBucket
-      prefix: "velero"
-    config:
-      region: us-east-1
-      profile: "default"
-    credentials_secret_ref:
-      name: cloud-credentials
-      namespace: oadp-operator
-  volume_snapshot_locations:
-  - name: default
-    provider: aws
-    config:
-      region: us-west-1
-      profile: "default"
   enable_restic: true
+```
+
+To enable openshift-velero-plugin along with velero installation, `default_velero_plugin` should be:
+
+```
+default_velero_plugins:
+  - aws
+  - openshift
 ```
 
 When the installation succeeds, create a Velero CR
