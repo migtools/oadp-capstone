@@ -4,27 +4,12 @@
 
 Clone the OADP Operator repository:
 ```
-git clone https://github.com/Amoghrd/oadp-operator.git
-```
-
-Switch to myBranch.
-
-Build the operator image:
-```
-podman build -f build/Dockerfile . -t oadp-operator:latest
-```
-
-Push the image to a registry. For example,
-```
-podman push localhost/oadp-operator:latest <REGISTRY_URL>
-```
-
-In order to use a locally built image of the operator, please update the operator.yaml file. Update the image of the oadp-operator container with the image registry URL. You can edit the file manually or use the following command( <REGISTRY_URL> is the placeholder for your own registry url in the command):
-```
-sed -i 's|quay.io/konveyor/oadp-operator:latest|<REGISTRY_URL>|g' deploy/operator.yaml
+git clone https://github.com/konveyor/oadp-operator
 ```
 
 Create an `oadp-operator-source.yaml` file like below in oadp-operator directory:
+
+<b>Note:</b> Change the `registryNamespace` and `publisher` fields.
 ```
 apiVersion: operators.coreos.com/v1
 kind: OperatorSource
@@ -39,16 +24,6 @@ spec:
   publisher: "deshah@redhat.com"
 ```
 
-Remove the deployed resources:
-```
-oc delete -f deploy/crds/konveyor.openshift.io_v1alpha1_velero_cr.yaml
-oc delete -f deploy/crds/konveyor.openshift.io_veleros_crd.yaml   
-oc delete -f deploy/
-oc delete namespace oadp-operator
-oc delete crd $(oc get crds | grep velero.io | awk -F ' ' '{print $1}')
-oc delete -f oadp-operator-source.yaml
-```
-
 Run the following commands (note: they should be run from the root of the oadp-operator directory):
 
 ```
@@ -57,6 +32,17 @@ oc project oadp-operator
 oc create secret generic <SECRET_NAME> --namespace oadp-operator --from-file cloud=<CREDENTIALS_FILE_PATH>
 oc create -f oadp-operator-source.yaml
 ```
+
+Remove the deployed resources:
+
+- Delete any CRD instances created inside the operator from operatorhub console.
+
+![CRD Unintall](/images/crd_uninstall.png)
+
+- Uninstall the OADP operator from the namespace.
+
+![OADP Uninstall](/images/oadp_uninstall.png)
+
 
 # Step 2: Install OADP Operator from OperatorHub
 
@@ -245,6 +231,43 @@ service/patroni-persistent-replica   ClusterIP   172.30.111.87    &lt;none&gt;  
 NAME                                  READY   AGE
 statefulset.apps/patroni-persistent   3/3     6d4h
 ```
+## Logging and populating database
+To get the service IPs of the PostgreSQL cluster, run:
+
+```
+$ oc get svc
+NAME                         TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)    AGE
+patroni-persistent           ClusterIP   172.30.88.252   <none>        5432/TCP   20h
+patroni-persistent-master    ClusterIP   172.30.51.69    <none>        5432/TCP   20h
+patroni-persistent-replica   ClusterIP   172.30.0.120    <none>        5432/TCP   20h
+```
+
+<b>Note:</b> You can use the patroni-persistent-master service to establish a read/write connection 
+while the patroni-persistent-replica service can be used to establish a read only connection.
+
+We are logging into PostgreSQL from the pgbench pod. The password for logging in is `postgres`.
+```
+oc rsh pgbench
+psql -U postgres -h 172.30.51.69
+```
+
+To create a table and populate data in it, run the following
+```
+postgres=> CREATE TABLE TEMP(id INTEGER PRIMARY KEY, name VARCHAR(10));
+postgres=> INSERT INTO TEMP VALUES(1,'alex');
+```
+
+To check if the data was populated do
+```
+postgres=> SELECT * FROM TEMP;
+```
+The output of the table should look like this
+```
+ id | name 
+----+------
+  1 | alex
+
+```
 
 # Step 6 - Performing a backup
 
@@ -406,18 +429,36 @@ Restic Backups:
 </pre>
 
 ## Postgres App
-To start the backup, start by creating annotation of prehooks and posthooks. These will serve the purpose of enabling 
-the quiesce behavior for Patroni during backup: [Detailed Directions](https://github.com/devarshshah15/velero-examples/tree/debug/patroni#quiescing-the-database "Postgres")
 
+[Detailed Directions](https://github.com/devarshshah15/velero-examples/tree/debug/patroni#quiescing-the-database "Postgres")
+
+Velero hooks enable the execution of terminal commands before and after resources are backed up. 
+Before a backup, "pre" hooks are used to freeze resources, so that they are not modified as the backup is taking place. 
+After a backup, "post" hooks are used to unfreeze those resources so so they can accept new transactions.
+
+
+These lines specify the "pre" hook to freeze resources:
+
+The container specifies where the command should be executed. Patronictl pause stops down the patroni cluster and pg_ctl stop shuts down the server running in the specified data directory.
 ```
-oc annotate pod -n patroni \
-    pre.hook.backup.velero.io/command= '["/bin/bash", "-c","patronictl pause && pg_ctl stop -D pgdata/pgroot/data"]' \
-    pre.hook.backup.velero.io/container=patroni-persistent \
-    post.hook.backup.velero.io/command='["/bin/bash", "-c", "patronictl resume"]'\
-    post.hook.backup.velero.io/container=patroni-persistent
+pre.hook.backup.velero.io/command: '["/bin/bash", "-c","patronictl pause && pg_ctl stop -D pgdata/pgroot/data"]'
+pre.hook.backup.velero.io/container: patroni-persistent
+```
+
+These lines specify the "post" hook to unfreeze them:
+
+The container specifies where the command should be executed. Patronictl resume starts up the patroni cluster.
+```
+post.hook.backup.velero.io/command: '["/bin/bash", "-c", "patronictl resume"]'
+post.hook.backup.velero.io/container: patroni-persistent
 ```
 
 Then we can run `oc create -f postgres-backup.yaml` to create the backup itself.
+
+
+![](images/patroni_backup.png "Patroni Backup")
+
+
 
 Then run `oc get volumesnapshotcontent` and make sure the output looks similar to the one below.
 ```
@@ -460,6 +501,13 @@ Next we can safely create a disaster scenario and safely delete the namespace.
 Run `oc delete namespace patroni` to delete the namespace.
 
 Results should look like the following:
+
+![](images/PatroniDelete.png "Patroni Delete")
+
+
+Delete image from internal registry and PV data once backup is completed. Restore the backup to see if internal registry image and PV data gets created:
+
+![](images/is_restore.png "IS_PLUGIN Restore")
 
 ![](images/PatroniDelete.png "Patroni Delete")
 
@@ -514,6 +562,10 @@ Restic Restores:
 Restoring Postgres by running `oc create -f postgres-restore.yaml`. The output should show:
 
 ![](images/PatroniRestore.png "Postgres Restore")
+
+Check the DB data after restore
+
+![](images/patroni_restore.png "Postgres Restore")
 
 Then check the CSI snapshots were created after restore.
 ```
