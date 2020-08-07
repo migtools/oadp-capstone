@@ -279,6 +279,19 @@ Optional: You can use `SELECT * FROM classicmodels.offices;` to check that your 
 
 Last exit the shell to move onto the backup.
 
+Run `oc get backupstoragelocation` to get the name of `storageLocation`.
+```
+ oc get backupstoragelocation
+NAME     AGE
+noobaa   21h
+```
+
+Edit `storageLocation` in [create-backup.yaml.j2](https://github.com/konveyor/velero-examples/blob/master/cassandra/roles/backup-cassandra/templates/create-backup.yaml.j2#L12) to the name returned from above command, in this case its `noobaa`. It should look something like this:
+
+```
+storageLocation: noobaa
+```
+
 Now for the backup, all we need to do to perform the backup is running the command `ansible-playbook backup.yaml`.
 
 Backup will look like the following with the nodetool operations being called in cassandra.
@@ -438,6 +451,18 @@ post.hook.backup.velero.io/command: '["/bin/bash", "-c", "patronictl resume"]'
 post.hook.backup.velero.io/container: patroni-persistent
 ```
 
+Run `oc get backupstoragelocation` to get the name of `storageLocation`.
+```
+ oc get backupstoragelocation
+NAME     AGE
+noobaa   21h
+```
+
+Edit `storageLocation` in [postgres-backup.yaml](https://github.com/konveyor/velero-examples/blob/master/patroni/postgres-backup.yaml#L12) to the name returned from above command, in this case its `noobaa`. It should look something like this:
+
+```
+storageLocation: noobaa
+```
 Then we can run `oc create -f postgres-backup.yaml` to create the backup itself.
 
 
