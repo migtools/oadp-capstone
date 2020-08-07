@@ -29,7 +29,6 @@ Run the following commands (note: they should be run from the root of the oadp-o
 ```
 oc create namespace oadp-operator
 oc project oadp-operator
-oc create secret generic <SECRET_NAME> --namespace oadp-operator --from-file cloud=<CREDENTIALS_FILE_PATH>
 oc create -f oadp-operator-source.yaml
 ```
 
@@ -68,10 +67,7 @@ If you go to Installed Operators and select the oadp-operator project, you shoul
 
 In order to use OLM for OADP deployment, you need to change flag `olm_managed` in the `konveyor.openshift.io_v1alpha1_velero_cr.yaml` to `true`. The file is present in deploy/crds folder.
 
-Moreover, to use Nooba, in the `konveyor.openshift.io_v1alpha1_velero_cr.yaml`, you need to:  
-
-1. Set the flag `noobaa` to `true`.
-2. Set the volume snapshot location region to the correct value. 
+Moreover, to use Nooba, in the `konveyor.openshift.io_v1alpha1_velero_cr.yaml`, you need to set the flag `noobaa` to `true`.
 
 For instance the `konveyor.openshift.io_v1alpha1_velero_cr.yaml` file might look something like this:
 
