@@ -44,18 +44,7 @@ Remove the deployed resources:
 ![OADP Uninstall](/images/oadp_uninstall.png)
 
 
-# Step 2: Install OADP Operator from OperatorHub
-
-Navigate to the OpenShift console in your web browser. Under the Administrator view, go to Operators on the left tab and click on OperatorHub. Search for the OADP Operator in the search bar. Click on it to install and subscribe to the operator. 
-
-![OADP OperatorHub](/images/oadp_operatorhub.png)
-
-If you go to Installed Operators and select the oadp-operator project, you should see the OADP Operator successfully installed:
-
-![OADP Installed](/images/oadp_installed.png)
-
-
-# Step 3: Install OCS from OperatorHub
+# Step 2: Install OCS from OperatorHub
 
 Navigate to the OpenShift console. Under the Administrator view, go to Operators on the left tab and click on OperatorHub. Search for the OpenShift Container Storage operator in the search bar. Click on it to install and subscribe to the operator. Make sure to install it under the oadp-operator namespace. 
 
@@ -64,6 +53,16 @@ Navigate to the OpenShift console. Under the Administrator view, go to Operators
 If you go to Installed Operators and select the openshift-operator project, you should see the OpenShift Container Storage operator successfully installed:
 
 ![OCS Installed](/images/ocs_installed.png)
+
+# Step 3: Install OADP Operator from OperatorHub
+
+Navigate to the OpenShift console in your web browser. Under the Administrator view, go to Operators on the left tab and click on OperatorHub. Search for the OADP Operator in the search bar. Click on it to install and subscribe to the operator. 
+
+![OADP OperatorHub](/images/oadp_operatorhub.png)
+
+If you go to Installed Operators and select the oadp-operator project, you should see the OADP Operator successfully installed:
+
+![OADP Installed](/images/oadp_installed.png)
 
 # Step 4: Create a Velero Custom Resource to Install Velero, Restic, and Noobaa
 
