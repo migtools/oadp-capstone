@@ -25,6 +25,7 @@ spec:
 ```
 
 Run the following commands (note: they should be run from the root of the oadp-operator directory):
+<b>Note:</b> If `noobaa:true` is set in your velero CR, don't execute this command `oc create secret generic <SECRET_NAME> --namespace oadp-operator --from-file cloud=<CREDENTIALS_FILE_PATH>` below.
 
 ```
 oc create namespace oadp-operator
