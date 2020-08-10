@@ -30,7 +30,6 @@ Run the following commands (note: they should be run from the root of the oadp-o
 ```
 oc create namespace oadp-operator
 oc project oadp-operator
-oc create secret generic <SECRET_NAME> --namespace oadp-operator --from-file cloud=<CREDENTIALS_FILE_PATH>
 oc create -f oadp-operator-source.yaml
 ```
 
@@ -45,18 +44,7 @@ Remove the deployed resources:
 ![OADP Uninstall](/images/oadp_uninstall.png)
 
 
-# Step 2: Install OADP Operator from OperatorHub
-
-Navigate to the OpenShift console in your web browser. Under the Administrator view, go to Operators on the left tab and click on OperatorHub. Search for the OADP Operator in the search bar. Click on it to install and subscribe to the operator. 
-
-![OADP OperatorHub](/images/oadp_operatorhub.png)
-
-If you go to Installed Operators and select the oadp-operator project, you should see the OADP Operator successfully installed:
-
-![OADP Installed](/images/oadp_installed.png)
-
-
-# Step 3: Install OCS from OperatorHub
+# Step 2: Install OCS from OperatorHub
 
 Navigate to the OpenShift console. Under the Administrator view, go to Operators on the left tab and click on OperatorHub. Search for the OpenShift Container Storage operator in the search bar. Click on it to install and subscribe to the operator. Make sure to install it under the oadp-operator namespace. 
 
@@ -66,14 +54,21 @@ If you go to Installed Operators and select the openshift-operator project, you 
 
 ![OCS Installed](/images/ocs_installed.png)
 
+# Step 3: Install OADP Operator from OperatorHub
+
+Navigate to the OpenShift console in your web browser. Under the Administrator view, go to Operators on the left tab and click on OperatorHub. Search for the OADP Operator in the search bar. Click on it to install and subscribe to the operator. 
+
+![OADP OperatorHub](/images/oadp_operatorhub.png)
+
+If you go to Installed Operators and select the oadp-operator project, you should see the OADP Operator successfully installed:
+
+![OADP Installed](/images/oadp_installed.png)
+
 # Step 4: Create a Velero Custom Resource to Install Velero, Restic, and Noobaa
 
 In order to use OLM for OADP deployment, you need to change flag `olm_managed` in the `konveyor.openshift.io_v1alpha1_velero_cr.yaml` to `true`. The file is present in deploy/crds folder.
 
-Moreover, to use Nooba, in the `konveyor.openshift.io_v1alpha1_velero_cr.yaml`, you need to:  
-
-1. Set the flag `noobaa` to `true`.
-2. Set the volume snapshot location region to the correct value. 
+Moreover, to use Nooba, in the `konveyor.openshift.io_v1alpha1_velero_cr.yaml`, you need to set the flag `noobaa` to `true`.
 
 For instance the `konveyor.openshift.io_v1alpha1_velero_cr.yaml` file might look something like this:
 
@@ -88,25 +83,15 @@ spec:
   noobaa: true
   default_velero_plugins:
   - aws
-  backup_storage_locations:
-  - name: default
-    provider: aws
-    object_storage:
-      bucket: myBucket
-      prefix: "velero"
-    config:
-      region: us-east-1
-      profile: "default"
-    credentials_secret_ref:
-      name: cloud-credentials
-      namespace: oadp-operator
-  volume_snapshot_locations:
-  - name: default
-    provider: aws
-    config:
-      region: us-west-1
-      profile: "default"
   enable_restic: true
+```
+
+To enable openshift-velero-plugin along with velero installation, `default_velero_plugin` should be:
+
+```
+default_velero_plugins:
+  - aws
+  - openshift
 ```
 
 When the installation succeeds, create a Velero CR
@@ -295,6 +280,19 @@ Optional: You can use `SELECT * FROM classicmodels.offices;` to check that your 
 
 Last exit the shell to move onto the backup.
 
+Run `oc get backupstoragelocation` to get the name of `storageLocation`.
+```
+ oc get backupstoragelocation
+NAME     AGE
+noobaa   21h
+```
+
+Edit `storageLocation` in [create-backup.yaml.j2](https://github.com/konveyor/velero-examples/blob/master/cassandra/roles/backup-cassandra/templates/create-backup.yaml.j2#L12) to the name returned from above command, in this case its `noobaa`. It should look something like this:
+
+```
+storageLocation: noobaa
+```
+
 Now for the backup, all we need to do to perform the backup is running the command `ansible-playbook backup.yaml`.
 
 Backup will look like the following with the nodetool operations being called in cassandra.
@@ -454,6 +452,18 @@ post.hook.backup.velero.io/command: '["/bin/bash", "-c", "patronictl resume"]'
 post.hook.backup.velero.io/container: patroni-persistent
 ```
 
+Run `oc get backupstoragelocation` to get the name of `storageLocation`.
+```
+ oc get backupstoragelocation
+NAME     AGE
+noobaa   21h
+```
+
+Edit `storageLocation` in [postgres-backup.yaml](https://github.com/konveyor/velero-examples/blob/master/patroni/postgres-backup.yaml#L12) to the name returned from above command, in this case its `noobaa`. It should look something like this:
+
+```
+storageLocation: noobaa
+```
 Then we can run `oc create -f postgres-backup.yaml` to create the backup itself.
 
 
