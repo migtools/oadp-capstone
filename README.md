@@ -480,7 +480,9 @@ snapcontent-bea37537-a585-4c5d-a02d-ce1067f067a8                  true         5
 snapcontent-c0e5a49b-e5d8-4235-8f90-96f2eedf2d04                  true         5368709120    Retain           rook-ceph.rbd.csi.ceph.com   csi-rbdplugin-snapclass   velero-patroni-persistent-patroni-persistent-1-q7nj6   46m
 snapcontent-d1104635-17d9-4c83-82e4-94032b31054e                  true         2147483648    Retain           rook-ceph.rbd.csi.ceph.com   csi-rbdplugin-snapclass   velero-patroni-8gx2g                                   44m
 ```
-    
+ 
+<b>Note:</b> To cleanup all the volumesnapshotcontents use this command `oc -n velero delete volumesnapshotcontents --all`. Volumesnapshotcontents are cluster-scoped resources.
+ 
 # Step 7 - Showing Backup Data in Noobaa S3 Bucket
 
 # Step 8 - Simulating a disaster scenario
