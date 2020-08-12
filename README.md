@@ -45,11 +45,11 @@ Remove the deployed resources:
 
 # Step 2: Install OCS from OperatorHub
 
-Navigate to the OpenShift console. Under the Administrator view, go to Operators on the left tab and click on OperatorHub. Search for the OpenShift Container Storage operator in the search bar. Click on it to install and subscribe to the operator. Make sure to install it under the oadp-operator namespace. 
+Navigate to the OpenShift console. Under the Administrator view, go to Operators on the left tab and click on OperatorHub. Search for the OpenShift Container Storage operator in the search bar. Click on it to install and subscribe to the operator. Make sure to install it under the openshift-storage namespace. 
 
 ![OCS OperatorHub](/images/ocs_operatorhub.png)
 
-If you go to Installed Operators and select the openshift-operator project, you should see the OpenShift Container Storage operator successfully installed:
+If you go to Installed Operators and select the openshift-storage project, you should see the OpenShift Container Storage operator successfully installed:
 
 ![OCS Installed](/images/ocs_installed.png)
 
@@ -100,52 +100,76 @@ oc create -f deploy/crds/konveyor.openshift.io_v1alpha1_velero_cr.yaml
 
 Post completion of all the above steps, you can check if the operator was successfully installed; the expected result for the command `oc get all -n oadp-operator` is as follows:
 ```
-NAME                                      READY   STATUS    RESTARTS   AGE
-pod/aws-s3-provisioner-6cdf54b89-8nz7l    1/1     Running   0          162m
-pod/noobaa-core-0                         1/1     Running   2          160m
-pod/noobaa-db-0                           1/1     Running   0          160m
-pod/noobaa-endpoint-7f4bcfb665-wmfhf      1/1     Running   0          156m
-pod/noobaa-operator-7b79bf7c68-wz5jc      1/1     Running   0          163m
-pod/oadp-operator-69fc6bfcb4-xjn2l        1/1     Running   1          161m
-pod/ocs-operator-7b564dc46f-hzh8g         1/1     Running   0          163m
-pod/rook-ceph-operator-6f985689b4-t95k4   1/1     Running   0          163m
+NAME                                READY   STATUS    RESTARTS   AGE
+pod/oadp-operator-84785c8ff-pmvr6   1/1     Running   0          19h
+pod/restic-6q4sd                    1/1     Running   0          19h
+pod/restic-blxdj                    1/1     Running   0          19h
+pod/restic-qggw6                    1/1     Running   0          19h
+pod/velero-cf895dd76-x4vxp          1/1     Running   0          19h
 
-NAME                            TYPE           CLUSTER-IP       EXTERNAL-IP                                                               PORT(S)                                                    AGE
-service/noobaa-db               ClusterIP      172.30.29.6      <none>                                                                    27017/TCP                                                  160m
-service/noobaa-mgmt             LoadBalancer   172.30.222.31    a1276fa043dc5469caaa9f6b566b5091-1561678137.us-west-1.elb.amazonaws.com   80:31438/TCP,443:31408/TCP,8445:32375/TCP,8446:31952/TCP   160m
-service/oadp-operator-metrics   ClusterIP      172.30.171.159   <none>                                                                    8383/TCP,8686/TCP                                          161m
-service/s3                      LoadBalancer   172.30.184.59    aebf6dedc595e489496daaeb74c65f12-400970079.us-west-1.elb.amazonaws.com    80:31321/TCP,443:30213/TCP,8444:32073/TCP                  160m
+NAME                            TYPE        CLUSTER-IP     EXTERNAL-IP   PORT(S)             AGE
+service/oadp-operator-metrics   ClusterIP   172.30.0.169   <none>        8383/TCP,8686/TCP   19h
 
-NAME                                 READY   UP-TO-DATE   AVAILABLE   AGE
-deployment.apps/aws-s3-provisioner   1/1     1            1           163m
-deployment.apps/noobaa-endpoint      1/1     1            1           156m
-deployment.apps/noobaa-operator      1/1     1            1           163m
-deployment.apps/oadp-operator        1/1     1            1           161m
-deployment.apps/ocs-operator         1/1     1            1           163m
-deployment.apps/rook-ceph-operator   1/1     1            1           163m
+NAME                    DESIRED   CURRENT   READY   UP-TO-DATE   AVAILABLE   NODE SELECTOR   AGE
+daemonset.apps/restic   3         3         3       3            3           <none>          19h
 
-NAME                                            DESIRED   CURRENT   READY   AGE
-replicaset.apps/aws-s3-provisioner-5dd8cccfd8   0         0         0       163m
-replicaset.apps/aws-s3-provisioner-6cdf54b89    1         1         1       162m
-replicaset.apps/noobaa-endpoint-7f4bcfb665      1         1         1       156m
-replicaset.apps/noobaa-operator-7b79bf7c68      1         1         1       163m
-replicaset.apps/oadp-operator-69fc6bfcb4        1         1         1       161m
-replicaset.apps/ocs-operator-7b564dc46f         1         1         1       163m
-replicaset.apps/rook-ceph-operator-6f985689b4   1         1         1       163m
+NAME                            READY   UP-TO-DATE   AVAILABLE   AGE
+deployment.apps/oadp-operator   1/1     1            1           19h
+deployment.apps/velero          1/1     1            1           19h
 
-NAME                           READY   AGE
-statefulset.apps/noobaa-core   1/1     160m
-statefulset.apps/noobaa-db     1/1     160m
-
-NAME                                                  REFERENCE                    TARGETS   MINPODS   MAXPODS   REPLICAS   AGE
-horizontalpodautoscaler.autoscaling/noobaa-endpoint   Deployment/noobaa-endpoint   0%/80%    1         1         1          156m
-
-NAME                                   HOST/PORT                                                                PATH   SERVICES      PORT         TERMINATION   WILDCARD
-route.route.openshift.io/noobaa-mgmt   noobaa-mgmt-oadp-operator.apps.cluster-dlu-4-5.dlu-4-5.mg.dog8code.com          noobaa-mgmt   mgmt-https   reencrypt     None
-route.route.openshift.io/s3            s3-oadp-operator.apps.cluster-dlu-4-5.dlu-4-5.mg.dog8code.com                   s3            s3-https     reencrypt     None
+NAME                                      DESIRED   CURRENT   READY   AGE
+replicaset.apps/oadp-operator-84785c8ff   1         1         1       19h
+replicaset.apps/velero-cf895dd76          1         1         1       19h
 ```
 
-Also, `oc get noobaa` should give:
+And the expected result for the command 'oc get all -n openshift-storage' is as follows:
+```
+NAME                                                     READY   STATUS    RESTARTS   AGE
+pod/aws-s3-provisioner-dbdc6c576-lshv6                   1/1     Running   0          19h
+pod/noobaa-core-0                                        1/1     Running   1          19h
+pod/noobaa-db-0                                          1/1     Running   0          19h
+pod/noobaa-endpoint-647d86467d-j4sgr                     1/1     Running   0          19h
+pod/noobaa-operator-bd6b9f669-znkzk                      1/1     Running   0          19h
+pod/oadp-storage-pv-pool-backing-store-noobaa-noobaa-0   1/1     Running   0          19h
+pod/oadp-storage-pv-pool-backing-store-noobaa-noobaa-1   1/1     Running   0          19h
+pod/oadp-storage-pv-pool-backing-store-noobaa-noobaa-2   1/1     Running   0          19h
+pod/ocs-operator-5555dfc9c8-r4fsn                        1/1     Running   0          19h
+pod/rook-ceph-operator-55c487c849-8dk8n                  1/1     Running   0          19h
+
+NAME                  TYPE           CLUSTER-IP       EXTERNAL-IP                                                               PORT(S)                                                    AGE
+service/noobaa-db     ClusterIP      172.30.152.51    <none>                                                                    27017/TCP                                                  19h
+service/noobaa-mgmt   LoadBalancer   172.30.42.41     a4c11907af4444685812692a49e72446-1384756472.us-west-1.elb.amazonaws.com   80:31163/TCP,443:32251/TCP,8445:31768/TCP,8446:30578/TCP   19h
+service/s3            LoadBalancer   172.30.253.196   a18e1765c93234f4ca31db3e0612d21f-828226932.us-west-1.elb.amazonaws.com    80:30261/TCP,443:31869/TCP,8444:32336/TCP                  19h
+
+NAME                                 READY   UP-TO-DATE   AVAILABLE   AGE
+deployment.apps/aws-s3-provisioner   1/1     1            1           19h
+deployment.apps/noobaa-endpoint      1/1     1            1           19h
+deployment.apps/noobaa-operator      1/1     1            1           19h
+deployment.apps/ocs-operator         1/1     1            1           19h
+deployment.apps/rook-ceph-operator   1/1     1            1           19h
+
+NAME                                            DESIRED   CURRENT   READY   AGE
+replicaset.apps/aws-s3-provisioner-7f5489594f   0         0         0       19h
+replicaset.apps/aws-s3-provisioner-dbdc6c576    1         1         1       19h
+replicaset.apps/noobaa-endpoint-647d86467d      1         1         1       19h
+replicaset.apps/noobaa-operator-bd6b9f669       1         1         1       19h
+replicaset.apps/ocs-operator-5555dfc9c8         1         1         1       19h
+replicaset.apps/rook-ceph-operator-55c487c849   1         1         1       19h
+
+NAME                                                                READY   AGE
+statefulset.apps/noobaa-core                                        1/1     19h
+statefulset.apps/noobaa-db                                          1/1     19h
+statefulset.apps/oadp-storage-pv-pool-backing-store-noobaa-noobaa   3/3     19h
+
+NAME                                                  REFERENCE                    TARGETS   MINPODS   MAXPODS   REPLICAS   AGE
+horizontalpodautoscaler.autoscaling/noobaa-endpoint   Deployment/noobaa-endpoint   0%/80%    1         1         1          19h
+
+NAME                                   HOST/PORT                                                                        PATH   SERVICES      PORT         TERMINATION   WILDCARD
+route.route.openshift.io/noobaa-mgmt   noobaa-mgmt-openshift-storage.apps.cluster-amogh-4-5.amogh-4-5.mg.dog8code.com          noobaa-mgmt   mgmt-https   reencrypt     None
+route.route.openshift.io/s3            s3-openshift-storage.apps.cluster-amogh-4-5.amogh-4-5.mg.dog8code.com                   s3            s3-https     reencrypt     None
+```
+
+Also, `oc get noobaa -n openshift-storage` should give:
 ```
 NAME     MGMT-ENDPOINTS                 S3-ENDPOINTS                   IMAGE                                                                                                            PHASE   AGE
 noobaa   [https://10.0.185.183:31408]   [https://10.0.185.183:30213]   registry.redhat.io/ocs4/mcg-core-rhel8@sha256:689c5a109b81190ddc507b17b7b44ae00029951e7e2c80a6e33358a53945dab6   Ready   161m
